@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新潟市 AI天気予報（独自補正版）</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+        }
+        p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        .img-container {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            background-color: #fff;
+            padding: 10px;
+        }
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>⛅️ 新潟市 AI気温予測</h1>
+    <p>気象庁(JMA MSM)の予測データを、LightGBMが新潟市専用に自動補正した独自の予報です。（毎日朝5時更新）</p>
+
+    <div class="img-container">
+        <img src="niigata_forecast.png" alt="最新の天気予報グラフ">
+    </div>
+
+</body>
+</html>
