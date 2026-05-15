@@ -24,4 +24,11 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run LightGBM Forecast Script
-      run: python niigata_lgbm_ai.py
+      run: python niigata_ai_lgbm.py
+
+    # ▼▼ この部分があるか確認（なければ✏️で追記してください） ▼▼
+    - name: Upload Forecast Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: weather-forecast-graph
+        path: niigata_forecast.png
