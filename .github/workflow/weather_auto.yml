@@ -1,0 +1,45 @@
+name: Daily Weather Forecast Automation
+
+# 「いつ」実行するかを定義
+on:
+  schedule:
+    # 毎日 日本時間の朝6時（UTCで前日の21時）に自動実行
+    - cron: '0 21 * * *'
+  # 手動でもボタン一つで実行できるようにする
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 「どこで」実行するか（最新のUbuntuサーバーを使います）
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. 自分のプログラム（コード）をサーバーにコピーする
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # 2. Pythonの環境を作る（今回は3.10を指定）
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    # 3. 必要なライブラリ（requirements.txt）をインストール
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # 4. LightGBMの予測スクリプトを実行！
+    - name: Run LightGBM Forecast Script
+      run: python niigata_lgbm_ai.py
+
+      - name: Run LightGBM Forecast Script
+      run: python niigata_lgbm_ai.py
+
+    # ▼▼ ここから下を追加 ▼▼
+    - name: Upload Forecast Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: weather-forecast-graph
+        path: niigata_forecast.png

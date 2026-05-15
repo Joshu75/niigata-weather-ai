@@ -105,5 +105,6 @@ plt.xticks(rotation=45)
 plt.legend()
 plt.tight_layout()
 
-plt.show()
-print("予測完了！ランダムフォレストの時とグラフの形がどう変わったか比べてみてください。")
+# 画面に出すのではなく、画像ファイルとして保存する！
+plt.savefig('niigata_forecast.png', dpi=300)
+print("予測完了！グラフを 'niigata_forecast.png' として保存しました。")
