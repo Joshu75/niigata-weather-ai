@@ -1,0 +1,91 @@
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+from sklearn.ensemble import RandomForestRegressor
+
+print("【ステップ1】過去のデータから新潟市の気象パターンを学習中...")
+
+# --- 1. 過去データの取得とAIの学習 ---
+end_date = datetime.now() - timedelta(days=1)
+start_date = end_date - timedelta(days=40)
+
+url_archive = "https://archive-api.open-meteo.com/v1/archive"
+params_archive = {
+    "latitude": 37.9161,
+    "longitude": 139.0364,
+    "start_date": start_date.strftime('%Y-%m-%d'),
+    "end_date": end_date.strftime('%Y-%m-%d'),
+    "hourly": "temperature_2m,relative_humidity_2m,shortwave_radiation,wind_speed_10m",
+    "timezone": "Asia/Tokyo"
+}
+res_arch = requests.get(url_archive, params=params_archive).json()
+df_train = pd.DataFrame({
+    "date": pd.to_datetime(res_arch["hourly"]["time"]),
+    "temp": res_arch["hourly"]["temperature_2m"],
+    "humidity": res_arch["hourly"]["relative_humidity_2m"],
+    "radiation": res_arch["hourly"]["shortwave_radiation"],
+    "wind_speed": res_arch["hourly"]["wind_speed_10m"]
+}).dropna()
+
+df_train['hour'] = df_train['date'].dt.hour
+df_train['day_of_year'] = df_train['date'].dt.dayofyear
+
+features = ['hour', 'day_of_year', 'humidity', 'radiation', 'wind_speed']
+X_train, y_train = df_train[features], df_train['temp']
+
+# AIモデルの構築と学習
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+
+print("【ステップ2】気象庁(JMA MSM)の未来予測データを取得中...")
+
+# --- 2. 気象庁の「未来の予測データ」を取得 ---
+url_forecast = "https://api.open-meteo.com/v1/forecast"
+params_forecast = {
+    "latitude": 37.9161,
+    "longitude": 139.0364,
+    "hourly": "temperature_2m,relative_humidity_2m,shortwave_radiation,wind_speed_10m",
+    "models": "jma_msm", # 気象庁メソモデルを指定！
+    "timezone": "Asia/Tokyo",
+    "forecast_days": 3   # 今日から3日先まで
+}
+res_fore = requests.get(url_forecast, params=params_forecast).json()
+df_future = pd.DataFrame({
+    "date": pd.to_datetime(res_fore["hourly"]["time"]),
+    "jma_temp": res_fore["hourly"]["temperature_2m"], # 気象庁の純粋な気温予測
+    "humidity": res_fore["hourly"]["relative_humidity_2m"],
+    "radiation": res_fore["hourly"]["shortwave_radiation"],
+    "wind_speed": res_fore["hourly"]["wind_speed_10m"]
+}).dropna()
+
+df_future['hour'] = df_future['date'].dt.hour
+df_future['day_of_year'] = df_future['date'].dt.dayofyear
+
+
+print("【ステップ3】AIが気象庁のデータを元に、新潟市の未来を独自予測中！")
+
+# --- 3. AIによる未来の予測（補正） ---
+X_future = df_future[features]
+df_future['ai_temp'] = model.predict(X_future) # AIの予測気温！
+
+
+# --- 4. 結果のグラフ化 ---
+plt.figure(figsize=(12, 6))
+
+# 気象庁の予測（ベースライン）
+plt.plot(df_future['date'], df_future['jma_temp'], color='gray', linestyle='--', label='JMA MSM Raw Forecast', linewidth=2)
+# AIの独自予測（補正後）
+plt.plot(df_future['date'], df_future['ai_temp'], color='#E74C3C', label='AI Corrected Forecast (Our Model!)', linewidth=2)
+
+plt.title('Future Weather Forecast: JMA Raw vs AI Corrected (Niigata City)', fontsize=14)
+plt.xlabel('Date / Time', fontsize=12)
+plt.ylabel('Temperature (℃)', fontsize=12)
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.xticks(rotation=45)
+plt.legend()
+plt.tight_layout()
+
+plt.show()
+print("予測完了！グレーの線(気象庁)と赤の線(AI)のズレが、AIが学習した『新潟市のクセ』です。")
