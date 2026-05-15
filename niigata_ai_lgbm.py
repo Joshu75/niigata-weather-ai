@@ -94,34 +94,59 @@ df_future['ai_temp'] = model.predict(X_future)
 
 
 # --- 5. 結果のグラフ化 ---
-# === グラフの描画 ===
-# 画面を縦に3つ分割します
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 15), sharex=True)
+import numpy as np # 風向きの計算（サイン・コサイン）に使うため追加します
 
-# --- 1段目：気温（AI補正 vs 気象庁Raw） ---
-ax1.plot(df_future['date'], df_future['jma_temp'], label='JMA MSM Raw Forecast', color='gray', linestyle='--')
-# ※ predictions はLightGBMの予測結果が入っている変数名に合わせてください
-ax1.plot(df_future['date'], df_future['ai_temp'], label='LightGBM Corrected Forecast', color='#3498db', linewidth=2)
-ax1.set_title("Advanced Weather Forecast (Niigata City)")
+# === グラフの描画（プロ仕様：2段メテオグラム） ===
+# 画面を縦に2つ分割します（少し高さを抑えて見やすくします）
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+# --------------------------------------------------
+# --- 1段目：気温（左Y軸） ＋ 降水量（右Y軸①） ＋ 湿度（右Y軸②） ---
+# --------------------------------------------------
+
+# ① 左側のY軸（気温：折れ線グラフ）
+ax1.plot(df_future['date'], df_future['jma_temp'], label='JMA Temp (Raw)', color='gray', linestyle='--')
+# ※ predictions はご自身の変数名に合わせてください
+ax1.plot(df_future['date'], df_future['ai_temp'], label='AI Temp (Corrected)', color='#e74c3c', linewidth=2)
+ax1.set_title("Advanced Meteogram: Temp, Precip, Humidity & Wind (Niigata City)")
 ax1.set_ylabel("Temperature (°C)")
-ax1.legend()
-ax1.grid(True, linestyle='--', alpha=0.7)
+ax1.legend(loc='upper left')
+ax1.grid(True, linestyle='--', alpha=0.5)
 
-# --- 2段目：降水量（棒グラフ） ---
-ax2.bar(df_future['date'], df_future['precipitation'], color='#34495e', width=0.05)
-ax2.set_title("Precipitation (mm)")
-ax2.set_ylabel("Precipitation (mm)")
-ax2.grid(True, linestyle='--', alpha=0.7)
+# ② 右側のY軸その1（降水量：棒グラフ）
+ax1_precip = ax1.twinx() # 右側にもう一つのY軸を作る必殺技
+ax1_precip.bar(df_future['date'], df_future['precipitation'], color='#3498db', alpha=0.4, width=0.05, label='Precipitation')
+ax1_precip.set_ylabel("Precipitation (mm)", color='#2980b9')
+ax1_precip.set_ylim(0, max(df_future['precipitation'].max() + 5, 20)) # 雨が見やすいように上限を調整
 
-# --- 3段目：風速（折れ線グラフ） ---
-ax3.plot(df_future['date'], df_future['wind_speed'], color='#2ecc71', linewidth=2)
-ax3.set_title("Wind Speed (m/s)")
-ax3.set_ylabel("Speed (m/s)")
-ax3.set_xlabel("Date / Time")
-ax3.grid(True, linestyle='--', alpha=0.7)
+# ③ 右側のY軸その2（湿度：点線グラフ）
+ax1_humid = ax1.twinx()
+ax1_humid.spines['right'].set_position(('axes', 1.08)) # 目盛りが重ならないように枠線の外側に押し出す
+ax1_humid.plot(df_future['date'], df_future['humidity'], color='#2ecc71', linestyle=':', linewidth=1.5, label='Humidity')
+ax1_humid.set_ylabel("Humidity (%)", color='#27ae60')
+ax1_humid.set_ylim(0, 100) # 湿度は0〜100%
 
-# 保存
+# --------------------------------------------------
+# --- 2段目：風速（折れ線） ＋ 風向（矢印ベクトル） ---
+# --------------------------------------------------
+
+# ① 風速（折れ線グラフ）
+ax2.plot(df_future['date'], df_future['wind_speed'], color='#f39c12', linewidth=2, label='Wind Speed')
+ax2.set_ylabel("Wind Speed (m/s)")
+ax2.set_xlabel("Date / Time")
+ax2.grid(True, linestyle='--', alpha=0.5)
+ax2.set_ylim(0, max(df_future['wind_speed'].max() + 5, 15)) # 矢印を描くための空間を上に作る
+
+# ② 風向（矢印の描画）
+# 風向（角度）を数学のラジアンに変換し、矢印のタテヨコの長さを計算
+u = -np.sin(np.radians(df_future['wind_dir']))
+v = -np.cos(np.radians(df_future['wind_dir']))
+# 全部描画すると矢印で真っ黒になるため、[::3]を使って「3時間ごと」に間引きして矢印を配置
+ax2.quiver(df_future['date'][::3], df_future['wind_speed'][::3], u[::3], v[::3], 
+           color='#d35400', scale=25, width=0.003, headwidth=4, label='Wind Direction')
+
+# グラフ全体の保存設定
 plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig('niigata_forecast.png', dpi=300)
-print("3段ダッシュボードの予測画像を保存しました！")
+# 押し出した湿度の目盛りが画像から見切れないように、自動で余白を調整して保存
+plt.savefig('niigata_forecast.png', dpi=300, bbox_inches='tight') 
+print("プロ仕様の2段メテオグラム画像を保存しました！")
