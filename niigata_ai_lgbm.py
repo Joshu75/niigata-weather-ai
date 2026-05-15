@@ -64,7 +64,8 @@ url_forecast = "https://api.open-meteo.com/v1/forecast"
 params_forecast = {
     "latitude": 37.9161,
     "longitude": 139.0364,
-    "hourly": "temperature_2m,relative_humidity_2m,shortwave_radiation,wind_speed_10m",
+    # ▼ ここに precipitation と wind_direction_10m を足します
+    "hourly": "temperature_2m,relative_humidity_2m,shortwave_radiation,wind_speed_10m,precipitation,wind_direction_10m",
     "models": "jma_msm",
     "timezone": "Asia/Tokyo",
     "forecast_days": 3
@@ -75,7 +76,10 @@ df_future = pd.DataFrame({
     "jma_temp": res_fore["hourly"]["temperature_2m"],
     "humidity": res_fore["hourly"]["relative_humidity_2m"],
     "radiation": res_fore["hourly"]["shortwave_radiation"],
-    "wind_speed": res_fore["hourly"]["wind_speed_10m"]
+    "wind_speed": res_fore["hourly"]["wind_speed_10m"],
+    # ▼ この2行を追加します（上の行の終わりにカンマが必要です）
+    "precipitation": res_fore["hourly"]["precipitation"],
+    "wind_dir": res_fore["hourly"]["wind_direction_10m"]
 }).dropna()
 
 df_future['hour'] = df_future['date'].dt.hour
@@ -90,21 +94,34 @@ df_future['ai_temp'] = model.predict(X_future)
 
 
 # --- 5. 結果のグラフ化 ---
-plt.figure(figsize=(12, 6))
+# === グラフの描画 ===
+# 画面を縦に3つ分割します
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 15), sharex=True)
 
-# 気象庁の予測（グレーの点線）
-plt.plot(df_future['date'], df_future['jma_temp'], color='gray', linestyle='--', label='JMA MSM Raw Forecast', linewidth=2)
-# LightGBMの独自予測（青い線）
-plt.plot(df_future['date'], df_future['ai_temp'], color='#3498DB', label='LightGBM Corrected Forecast', linewidth=2)
+# --- 1段目：気温（AI補正 vs 気象庁Raw） ---
+ax1.plot(df_future['date'], df_future['jma_temp'], label='JMA MSM Raw Forecast', color='gray', linestyle='--')
+# ※ predictions はLightGBMの予測結果が入っている変数名に合わせてください
+ax1.plot(df_future['date'], df_future['ai_temp'], label='LightGBM Corrected Forecast', color='#3498db', linewidth=2)
+ax1.set_title("Advanced Weather Forecast (Niigata City)")
+ax1.set_ylabel("Temperature (°C)")
+ax1.legend()
+ax1.grid(True, linestyle='--', alpha=0.7)
 
-plt.title('Advanced Weather Forecast: JMA Raw vs LightGBM (Niigata City)', fontsize=14)
-plt.xlabel('Date / Time', fontsize=12)
-plt.ylabel('Temperature (℃)', fontsize=12)
-plt.grid(True, linestyle='--', alpha=0.7)
+# --- 2段目：降水量（棒グラフ） ---
+ax2.bar(df_future['date'], df_future['precipitation'], color='#34495e', width=0.05)
+ax2.set_title("Precipitation (mm)")
+ax2.set_ylabel("Precipitation (mm)")
+ax2.grid(True, linestyle='--', alpha=0.7)
+
+# --- 3段目：風速（折れ線グラフ） ---
+ax3.plot(df_future['date'], df_future['wind_speed'], color='#2ecc71', linewidth=2)
+ax3.set_title("Wind Speed (m/s)")
+ax3.set_ylabel("Speed (m/s)")
+ax3.set_xlabel("Date / Time")
+ax3.grid(True, linestyle='--', alpha=0.7)
+
+# 保存
 plt.xticks(rotation=45)
-plt.legend()
 plt.tight_layout()
-
-# 画面に出すのではなく、画像ファイルとして保存する！
 plt.savefig('niigata_forecast.png', dpi=300)
-print("予測完了！グラフを 'niigata_forecast.png' として保存しました。")
+print("3段ダッシュボードの予測画像を保存しました！")
